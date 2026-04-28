@@ -689,7 +689,7 @@
         const dot = document.getElementById("status-dot");
         dot.className = "status-dot";
         try {
-          const r = await fetch("http://localhost:8000/health");
+          const r = await fetch("http://34.100.248.10:8000/health");
           const data = await r.json();
           const vsOk = data.components?.vector_store === "ok";
           dot.className = vsOk ? "status-dot ok" : "status-dot err";
