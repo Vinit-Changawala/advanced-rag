@@ -1,0 +1,64 @@
+# ============================================================
+# settings.yaml
+# This file holds ALL the configuration for your entire project.
+# Think of it like a "control panel" - you change values here
+# instead of hunting through code files.
+# ============================================================
+
+# --- LLM (Large Language Model) Settings ---
+# Used for: answering questions, summaries, critiques, evaluation, all agent reasoning
+llm:
+  provider: "mistral"              # "mistral" or "openai"
+  model: "mistral-large-latest"    # Mistral options: mistral-large-latest, mistral-small-latest
+                                   # OpenAI options:  gpt-4o, gpt-4o-mini
+  temperature: 0.2                 # 0 = very focused answers, 1 = more creative
+  max_tokens: 2048                 # Max words the model can reply with
+  api_key_env: "MISTRAL_API_KEY"   # Name of the environment variable holding your Mistral key
+
+# --- Embedding Model ---
+# FREE — runs locally on your computer, no API key needed.
+# Model downloads automatically (~130 MB) on first run.
+# Cached at: ~/.cache/huggingface/
+embedding:
+  provider: "huggingface"
+  model: "BAAI/bge-small-en-v1.5"   # Free, top-ranked, 384 dimensions
+  dimensions: 384                    # Auto-detected from model; listed here for reference
+  # Other free options (bigger = slower but more accurate):
+  # model: "BAAI/bge-base-en-v1.5"  → 768 dims, ~420 MB
+  # model: "BAAI/bge-large-en-v1.5" → 1024 dims, ~1.2 GB
+  # model: "all-MiniLM-L6-v2"       → 384 dims, ~90 MB (slightly lower quality)
+  api_key_env: ""                    # No key needed!
+
+# --- Vector Database (stores text as searchable number arrays) ---
+vector_store:
+  provider: "qdrant"               # We use Qdrant as our vector database
+  host: "localhost"
+  port: 6333
+  collection_name: "rag_chunks"    # Like a "table" name in a normal database
+
+# --- Relational Database (stores normal structured data) ---
+relational_db:
+  provider: "postgresql"
+  host: "localhost"
+  port: 5432
+  database: "ragdb"
+  user: "raguser"
+  password_env: "DB_PASSWORD"      # Store password in environment variable, never hardcode!
+
+# --- Data Preprocessing Settings ---
+preprocessing:
+  chunk_size: 512                  # How many tokens (words) per chunk
+  chunk_overlap: 50                # How many tokens overlap between chunks (avoids cutting mid-sentence)
+  min_chunk_size: 100              # Ignore chunks smaller than this
+
+# --- API Server Settings ---
+api:
+  host: "0.0.0.0"                  # Listen on all network interfaces
+  port: 8000
+  debug: false                     # Set true during development for more logs
+  secret_key_env: "API_SECRET_KEY"
+
+# --- Logging ---
+logging:
+  level: "INFO"                    # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

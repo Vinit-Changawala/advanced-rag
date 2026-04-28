@@ -1,0 +1,1112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RAG Assistant</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      :root {
+        --bg: #f8f9fa;
+        --surface: #fff;
+        --border: #e5e7eb;
+        --text: #111827;
+        --muted: #6b7280;
+        --accent: #4f46e5;
+        --accent-light: #eef2ff;
+        --danger: #dc2626;
+        --danger-light: #fef2f2;
+        --success: #16a34a;
+        --success-light: #f0fdf4;
+        --warn: #d97706;
+        --warn-light: #fffbeb;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        padding: 0 24px;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+      }
+      .logo {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--accent);
+      }
+      .logo span {
+        color: var(--text);
+      }
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .key-input {
+        padding: 6px 10px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 12px;
+        font-family: monospace;
+        width: 240px;
+        outline: none;
+      }
+      .key-input:focus {
+        border-color: var(--accent);
+      }
+      .key-label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #d1d5db;
+      }
+      .status-dot.ok {
+        background: var(--success);
+      }
+      .status-dot.err {
+        background: var(--danger);
+      }
+      .btn-sm {
+        padding: 5px 10px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: transparent;
+        cursor: pointer;
+        font-size: 12px;
+        color: var(--text);
+      }
+      .btn-sm:hover {
+        background: var(--bg);
+      }
+      .main {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+      .sidebar {
+        width: 280px;
+        background: var(--surface);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+      .sidebar-head {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .upload-zone {
+        margin: 10px;
+        border: 1.5px dashed var(--border);
+        border-radius: 8px;
+        padding: 16px 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .upload-zone:hover,
+      .upload-zone.drag {
+        border-color: var(--accent);
+        background: var(--accent-light);
+      }
+      .upload-icon {
+        font-size: 24px;
+        margin-bottom: 6px;
+        color: var(--muted);
+      }
+      .upload-text {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .upload-text strong {
+        color: var(--text);
+      }
+      #file-input {
+        display: none;
+      }
+      .file-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 4px 8px;
+      }
+      .file-section-label {
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        padding: 8px 4px 4px;
+      }
+      .file-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        margin-bottom: 2px;
+        background: var(--bg);
+        border: 1px solid transparent;
+      }
+      .file-item:hover {
+        border-color: var(--border);
+      }
+      .file-icon {
+        font-size: 14px;
+        flex-shrink: 0;
+      }
+      .file-name {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .file-status {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        flex-shrink: 0;
+        font-weight: 500;
+      }
+      .fs-ready {
+        background: #e5e7eb;
+        color: var(--muted);
+      }
+      .fs-processing {
+        background: #fef3c7;
+        color: var(--warn);
+      }
+      .fs-done {
+        background: var(--success-light);
+        color: var(--success);
+      }
+      .fs-error {
+        background: var(--danger-light);
+        color: var(--danger);
+      }
+      .fs-ingested {
+        background: var(--accent-light);
+        color: var(--accent);
+      }
+      .del-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #d1d5db;
+        font-size: 13px;
+        padding: 2px 4px;
+        border-radius: 3px;
+        flex-shrink: 0;
+        line-height: 1;
+      }
+      .del-btn:hover {
+        color: var(--danger);
+        background: var(--danger-light);
+      }
+      .sidebar-footer {
+        padding: 10px;
+        border-top: 1px solid var(--border);
+      }
+      .btn-primary {
+        padding: 8px 14px;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+        font-weight: 500;
+        border: none;
+        background: var(--accent);
+        color: #fff;
+        width: 100%;
+        transition: all 0.15s;
+      }
+      .btn-primary:hover {
+        background: #4338ca;
+      }
+      .btn-primary:disabled {
+        background: #a5b4fc;
+        cursor: not-allowed;
+      }
+      .chat-area {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .msg-user {
+        align-self: flex-end;
+        max-width: 70%;
+        background: var(--accent);
+        color: #fff;
+        padding: 12px 16px;
+        border-radius: 18px 18px 4px 18px;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      .msg-ai {
+        align-self: flex-start;
+        max-width: 80%;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 14px 16px;
+        border-radius: 4px 18px 18px 18px;
+        font-size: 14px;
+        line-height: 1.65;
+      }
+      .answer-text {
+        color: var(--text);
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .answer-text strong {
+        font-weight: 500;
+      }
+      .answer-text em {
+        font-style: italic;
+      }
+      .answer-text ul {
+        margin: 6px 0 6px 16px;
+        padding: 0;
+      }
+      .answer-text li {
+        margin-bottom: 3px;
+      }
+      .answer-text p {
+        margin: 6px 0;
+      }
+      .sources {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border);
+      }
+      .sources-label {
+        font-size: 10px;
+        color: var(--muted);
+        margin-bottom: 4px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .source-tag {
+        display: inline-block;
+        font-size: 11px;
+        background: var(--accent-light);
+        color: var(--accent);
+        padding: 2px 8px;
+        border-radius: 4px;
+        margin: 2px 3px 2px 0;
+      }
+      .msg-meta {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .meta-badge {
+        font-size: 11px;
+        padding: 2px 7px;
+        border-radius: 4px;
+        font-weight: 500;
+      }
+      .mb-direct {
+        background: #e0f2fe;
+        color: #0369a1;
+      }
+      .mb-agents {
+        background: #f3e8ff;
+        color: #7c3aed;
+      }
+      .mb-human {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .mb-score-ok {
+        background: var(--success-light);
+        color: var(--success);
+      }
+      .mb-score-low {
+        background: var(--danger-light);
+        color: var(--danger);
+      }
+      .mb-ms {
+        background: #f1f5f9;
+        color: #64748b;
+      }
+      .thinking {
+        align-self: flex-start;
+        display: flex;
+        gap: 5px;
+        padding: 14px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px 18px 18px 18px;
+      }
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #d1d5db;
+        animation: pulse 1.2s ease-in-out infinite;
+      }
+      .dot:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .dot:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      @keyframes pulse {
+        0%,
+        80%,
+        100% {
+          transform: scale(0.8);
+          opacity: 0.5;
+        }
+        40% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .empty-state {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        text-align: center;
+        padding: 40px;
+      }
+      .empty-icon {
+        font-size: 44px;
+        margin-bottom: 12px;
+        opacity: 0.35;
+      }
+      .empty-title {
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--text);
+        margin-bottom: 6px;
+      }
+      .empty-sub {
+        font-size: 13px;
+        line-height: 1.6;
+        max-width: 320px;
+      }
+      .suggestions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+        justify-content: center;
+      }
+      .sugg {
+        font-size: 12px;
+        padding: 6px 12px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        cursor: pointer;
+        color: var(--muted);
+        transition: all 0.15s;
+      }
+      .sugg:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-light);
+      }
+      .input-area {
+        padding: 14px 24px;
+        border-top: 1px solid var(--border);
+        background: var(--surface);
+      }
+      .input-row {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+      }
+      .query-input {
+        flex: 1;
+        padding: 10px 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        resize: none;
+        outline: none;
+        min-height: 44px;
+        max-height: 120px;
+        line-height: 1.5;
+      }
+      .query-input:focus {
+        border-color: var(--accent);
+      }
+      .send-btn {
+        padding: 10px 20px;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        flex-shrink: 0;
+      }
+      .send-btn:hover {
+        background: #4338ca;
+      }
+      .send-btn:disabled {
+        background: #a5b4fc;
+        cursor: not-allowed;
+      }
+      .toast {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        z-index: 9999;
+        animation: slide-in 0.2s ease;
+        pointer-events: none;
+      }
+      .toast-ok {
+        background: var(--success);
+        color: #fff;
+      }
+      .toast-err {
+        background: var(--danger);
+        color: #fff;
+      }
+      @keyframes slide-in {
+        from {
+          transform: translateY(20px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="logo">RAG <span>Assistant</span></div>
+      <div class="header-right">
+        <span class="key-label">API Key:</span>
+        <input
+          class="key-input"
+          id="api-key"
+          type="password"
+          placeholder="Paste your API_SECRET_KEY here"
+        />
+        <div class="status-dot" id="status-dot" title="Not tested"></div>
+        <button class="btn-sm" onclick="testConnection()">Test</button>
+      </div>
+    </header>
+
+    <div class="main">
+      <div class="sidebar">
+        <div class="sidebar-head">
+          Documents
+          <button
+            class="btn-sm"
+            onclick="loadIngestedFiles()"
+            title="Refresh file list"
+          >
+            &#8635;
+          </button>
+        </div>
+
+        <div
+          class="upload-zone"
+          id="drop-zone"
+          onclick="document.getElementById('file-input').click()"
+          ondragover="handleDragOver(event)"
+          ondragleave="handleDragLeave(event)"
+          ondrop="handleDrop(event)"
+        >
+          <div class="upload-icon">&#128196;</div>
+          <div class="upload-text">
+            <strong>Drop files here</strong><br />or click to browse<br />PDF ·
+            DOCX · TXT · CSV · XLSX · PNG · JPG
+          </div>
+        </div>
+        <input
+          type="file"
+          id="file-input"
+          multiple
+          accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.py,.js,.png,.jpg,.jpeg"
+          onchange="handleFileSelect(event)"
+        />
+
+        <div class="file-list" id="file-list">
+          <div id="ingested-section" style="display: none">
+            <div class="file-section-label">In knowledge base</div>
+            <div id="ingested-files"></div>
+          </div>
+          <div id="pending-section" style="display: none">
+            <div class="file-section-label">Ready to upload</div>
+            <div id="pending-files"></div>
+          </div>
+        </div>
+
+        <div class="sidebar-footer">
+          <div
+            id="upload-info"
+            style="
+              font-size: 11px;
+              color: var(--muted);
+              margin-bottom: 6px;
+              text-align: center;
+            "
+          ></div>
+          <button
+            class="btn-primary"
+            id="upload-btn"
+            onclick="uploadFiles()"
+            disabled
+          >
+            Upload to RAG
+          </button>
+        </div>
+      </div>
+
+      <div class="chat-area">
+        <div class="messages" id="messages">
+          <div class="empty-state" id="empty-state">
+            <div class="empty-icon">&#129504;</div>
+            <div class="empty-title">Ask anything about your documents</div>
+            <div class="empty-sub">
+              Upload files on the left, then type your question below. The AI
+              answers using only your documents.
+            </div>
+            <div class="suggestions">
+              <span class="sugg" onclick="fillQuery('What is RoBERTa?')"
+                >What is RoBERTa?</span
+              >
+              <span
+                class="sugg"
+                onclick="fillQuery('What is the leave policy?')"
+                >What is the leave policy?</span
+              >
+              <span
+                class="sugg"
+                onclick="fillQuery('What products are out of stock?')"
+                >What products are out of stock?</span
+              >
+              <span
+                class="sugg"
+                onclick="fillQuery('How much smaller is DistilBERT than BERT?')"
+                >How much smaller is DistilBERT?</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <div class="input-area">
+          <div class="input-row">
+            <textarea
+              class="query-input"
+              id="query-input"
+              placeholder="Ask a question about your documents..."
+              rows="1"
+              onkeydown="handleKeydown(event)"
+              oninput="autoResize(this)"
+            ></textarea>
+            <button class="send-btn" id="send-btn" onclick="sendQuery()">
+              Send
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API = "http://localhost:8000/api/v1";
+      let pendingFiles = [];
+      let isAsking = false;
+
+      function getKey() {
+        return (document.getElementById("api-key").value || "").trim();
+      }
+      function hdrs(json = true) {
+        const h = { "X-API-Key": getKey() };
+        if (json) h["Content-Type"] = "application/json";
+        return h;
+      }
+
+      // ── STARTUP ───────────────────────────────────────────────────
+      window.addEventListener("load", () => {
+        const saved = localStorage.getItem("rag_api_key");
+        if (saved) document.getElementById("api-key").value = saved;
+        document.getElementById("api-key").addEventListener("change", () => {
+          localStorage.setItem(
+            "rag_api_key",
+            document.getElementById("api-key").value,
+          );
+          renderUI();
+        });
+        document.getElementById("api-key").addEventListener("input", renderUI);
+        loadIngestedFiles();
+      });
+
+      // ── CONNECTION TEST ───────────────────────────────────────────
+      async function testConnection() {
+        const dot = document.getElementById("status-dot");
+        dot.className = "status-dot";
+        try {
+          const r = await fetch("http://localhost:8000/health");
+          const data = await r.json();
+          const vsOk = data.components?.vector_store === "ok";
+          dot.className = vsOk ? "status-dot ok" : "status-dot err";
+          toast(
+            vsOk
+              ? "Connected — vector store ready"
+              : "Connected but vector store unavailable",
+            vsOk,
+          );
+          if (vsOk) loadIngestedFiles();
+        } catch (e) {
+          dot.className = "status-dot err";
+          toast("Cannot reach server", false);
+        }
+      }
+
+      // ── LOAD INGESTED FILES FROM SERVER ──────────────────────────
+      async function loadIngestedFiles() {
+        if (!getKey()) return;
+        try {
+          const r = await fetch(`${API}/ingest/sources`, { headers: hdrs() });
+          if (!r.ok) return;
+          const data = await r.json();
+          renderIngestedFiles(data.sources || []);
+        } catch (e) {
+          /* server not ready yet */
+        }
+      }
+
+      function renderIngestedFiles(sources) {
+        const section = document.getElementById("ingested-section");
+        const container = document.getElementById("ingested-files");
+        container.innerHTML = "";
+        if (!sources.length) {
+          section.style.display = "none";
+          return;
+        }
+        section.style.display = "block";
+        sources.forEach((fname) => {
+          const item = document.createElement("div");
+          item.className = "file-item";
+          item.id = `ingested-${CSS.escape(fname)}`;
+          item.innerHTML = `
+      <span class="file-icon">${fileIcon(fname)}</span>
+      <span class="file-name" title="${fname}">${fname}</span>
+      <span class="file-status fs-ingested">Ingested</span>
+      <button class="del-btn" onclick="deleteFile('${fname.replace(/'/g, "\\'")}', this)" title="Remove from knowledge base">&#10005;</button>`;
+          container.appendChild(item);
+        });
+      }
+
+      // ── DELETE FILE ───────────────────────────────────────────────
+      async function deleteFile(filename, btn) {
+        if (
+          !confirm(
+            `Remove "${filename}" from the knowledge base?\nThis cannot be undone.`,
+          )
+        )
+          return;
+        btn.disabled = true;
+        btn.textContent = "...";
+        try {
+          const r = await fetch(
+            `${API}/ingest/file?filename=${encodeURIComponent(filename)}`,
+            {
+              method: "DELETE",
+              headers: hdrs(),
+            },
+          );
+          if (r.ok) {
+            toast(`Removed: ${filename}`, true);
+            loadIngestedFiles();
+          } else {
+            const d = await r.json();
+            toast(d.error || "Delete failed", false);
+            btn.disabled = false;
+            btn.textContent = "✕";
+          }
+        } catch (e) {
+          toast("Delete failed: " + e.message, false);
+          btn.disabled = false;
+          btn.textContent = "✕";
+        }
+      }
+
+      // ── FILE UPLOAD ───────────────────────────────────────────────
+      function fileIcon(name) {
+        const e = name.split(".").pop().toLowerCase();
+        return (
+          {
+            pdf: "📄",
+            docx: "📄",
+            doc: "📄",
+            txt: "📝",
+            md: "📝",
+            csv: "📊",
+            xlsx: "📊",
+            xls: "📊",
+            py: "💻",
+            js: "💻",
+            png: "🖼",
+            jpg: "🖼",
+            jpeg: "🖼",
+          }[e] || "📄"
+        );
+      }
+
+      function handleDragOver(e) {
+        e.preventDefault();
+        document.getElementById("drop-zone").classList.add("drag");
+      }
+      function handleDragLeave() {
+        document.getElementById("drop-zone").classList.remove("drag");
+      }
+      function handleDrop(e) {
+        e.preventDefault();
+        handleDragLeave();
+        addFiles(Array.from(e.dataTransfer.files));
+      }
+      function handleFileSelect(e) {
+        addFiles(Array.from(e.target.files));
+        e.target.value = "";
+      }
+
+      function addFiles(files) {
+        files.forEach((f) => {
+          if (!pendingFiles.find((p) => p.name === f.name))
+            pendingFiles.push(f);
+        });
+        renderUI();
+      }
+
+      function renderUI() {
+        const pending = document.getElementById("pending-section");
+        const pfiles = document.getElementById("pending-files");
+        const btn = document.getElementById("upload-btn");
+        const info = document.getElementById("upload-info");
+
+        pfiles.innerHTML = "";
+        if (pendingFiles.length) {
+          pending.style.display = "block";
+          pendingFiles.forEach((f, i) => {
+            const item = document.createElement("div");
+            item.className = "file-item";
+            item.id = `pending-${i}`;
+            item.innerHTML = `
+        <span class="file-icon">${fileIcon(f.name)}</span>
+        <span class="file-name" title="${f.name}">${f.name}</span>
+        <span class="file-status fs-ready" id="pstatus-${i}">Ready</span>
+        <button class="del-btn" onclick="removePending(${i})" title="Remove">✕</button>`;
+            pfiles.appendChild(item);
+          });
+        } else {
+          pending.style.display = "none";
+        }
+
+        const count = pendingFiles.length;
+        btn.disabled = count === 0 || !getKey();
+        info.textContent =
+          count > 0
+            ? `${count} file${count > 1 ? "s" : ""} ready to upload`
+            : "";
+      }
+
+      function removePending(i) {
+        pendingFiles.splice(i, 1);
+        renderUI();
+      }
+
+      async function uploadFiles() {
+        if (!getKey()) {
+          toast("Enter your API key first", false);
+          return;
+        }
+        const btn = document.getElementById("upload-btn");
+        btn.disabled = true;
+        btn.textContent = "Uploading...";
+
+        const fd = new FormData();
+        pendingFiles.forEach((f) => fd.append("files", f));
+
+        // Show processing status
+        pendingFiles.forEach((_, i) => {
+          const el = document.getElementById(`pstatus-${i}`);
+          if (el) {
+            el.textContent = "Uploading";
+            el.className = "file-status fs-processing";
+          }
+        });
+
+        try {
+          const r = await fetch(`${API}/ingest`, {
+            method: "POST",
+            headers: { "X-API-Key": getKey() },
+            body: fd,
+          });
+          const data = await r.json();
+          if (r.ok) {
+            toast(`Processing ${pendingFiles.length} file(s)…`, true);
+            pendingFiles.forEach((_, i) => {
+              const el = document.getElementById(`pstatus-${i}`);
+              if (el) {
+                el.textContent = "Processing";
+                el.className = "file-status fs-processing";
+              }
+            });
+            // Poll for completion
+            const jobId = data.job_id;
+            pendingFiles = [];
+            pollJobStatus(jobId);
+          } else {
+            toast(data.error || data.detail || "Upload failed", false);
+            pendingFiles.forEach((_, i) => {
+              const el = document.getElementById(`pstatus-${i}`);
+              if (el) {
+                el.textContent = "Error";
+                el.className = "file-status fs-error";
+              }
+            });
+          }
+        } catch (e) {
+          toast("Upload failed: " + e.message, false);
+        }
+
+        btn.textContent = "Upload to RAG";
+        btn.disabled = false;
+        renderUI();
+      }
+
+      async function pollJobStatus(jobId) {
+        for (let i = 0; i < 30; i++) {
+          await new Promise((r) => setTimeout(r, 2000));
+          try {
+            const r = await fetch(`${API}/ingest/status/${jobId}`, {
+              headers: hdrs(),
+            });
+            const d = await r.json();
+            if (d.status === "done") {
+              toast(`Done! ${d.chunks_created} chunks indexed`, true);
+              loadIngestedFiles();
+              return;
+            }
+            if (d.status === "failed") {
+              toast("Ingestion failed: " + (d.error || "unknown error"), false);
+              return;
+            }
+          } catch (e) {
+            /* retry */
+          }
+        }
+        toast("Still processing… refresh file list in a moment", true);
+        loadIngestedFiles();
+      }
+
+      // ── QUERY ────────────────────────────────────────────────────
+      function fillQuery(text) {
+        const inp = document.getElementById("query-input");
+        inp.value = text;
+        autoResize(inp);
+        inp.focus();
+      }
+
+      function autoResize(el) {
+        el.style.height = "auto";
+        el.style.height = Math.min(el.scrollHeight, 120) + "px";
+      }
+
+      function handleKeydown(e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendQuery();
+        }
+      }
+
+      async function sendQuery() {
+        const inp = document.getElementById("query-input");
+        const q = inp.value.trim();
+        if (!q || isAsking) return;
+        if (!getKey()) {
+          toast("Enter your API key first", false);
+          return;
+        }
+
+        isAsking = true;
+        document.getElementById("send-btn").disabled = true;
+        const empty = document.getElementById("empty-state");
+        if (empty) empty.remove();
+
+        addBubble("user", q);
+        inp.value = "";
+        autoResize(inp);
+
+        const thinking = Object.assign(document.createElement("div"), {
+          className: "thinking",
+          id: "thinking",
+        });
+        thinking.innerHTML =
+          '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+        document.getElementById("messages").appendChild(thinking);
+        scrollBottom();
+
+        try {
+          const r = await fetch(`${API}/query`, {
+            method: "POST",
+            headers: hdrs(),
+            // body: JSON.stringify({query:q, top_k:5, use_agents:true})
+            body: JSON.stringify({ query: q, top_k: 5 }),
+          });
+          const data = await r.json();
+          thinking.remove();
+          if (r.ok) {
+            addAIBubble(data);
+          } else {
+            addBubble(
+              "error",
+              data.error || data.detail || "Query failed (" + r.status + ")",
+            );
+          }
+        } catch (e) {
+          thinking.remove();
+          addBubble(
+            "error",
+            "Cannot reach server. Make sure uvicorn is running on port 8000.",
+          );
+        }
+
+        isAsking = false;
+        document.getElementById("send-btn").disabled = false;
+        scrollBottom();
+      }
+
+      function addBubble(type, text) {
+        const wrap = document.getElementById("messages");
+        const div = document.createElement("div");
+        if (type === "user") {
+          div.className = "msg-user";
+          div.textContent = text;
+        } else {
+          div.className = "msg-ai";
+          div.innerHTML = `<div class="answer-text" style="color:var(--danger)">${esc(text)}</div>`;
+        }
+        wrap.appendChild(div);
+        scrollBottom();
+      }
+
+      function addAIBubble(data) {
+        const wrap = document.getElementById("messages");
+        const div = document.createElement("div");
+        div.className = "msg-ai";
+
+        const score =
+          data.evaluation_score != null
+            ? parseFloat(data.evaluation_score)
+            : null;
+        const scoreTag =
+          score != null
+            ? `<span class="meta-badge ${score >= 7 ? "mb-score-ok" : "mb-score-low"}">Score ${score.toFixed(1)}/10</span>`
+            : "";
+        const routeTag =
+          {
+            direct: '<span class="meta-badge mb-direct">Direct</span>',
+            multi_agent:
+              '<span class="meta-badge mb-agents">Multi-agent</span>',
+            human_review:
+              '<span class="meta-badge mb-human">Human review</span>',
+          }[data.route_taken] || "";
+        const msTag = data.latency_ms
+          ? `<span class="meta-badge mb-ms">${data.latency_ms}ms</span>`
+          : "";
+
+        const srcs = (data.sources || []).filter(Boolean);
+        const srcHtml = srcs.length
+          ? `<div class="sources"><div class="sources-label">Sources</div>${srcs.map((s) => `<span class="source-tag">${s.split(/[/\\]/).pop()}</span>`).join(" ")}</div>`
+          : "";
+
+        //     div.innerHTML = `
+        // <div class="answer-text">${esc(data.answer || 'No answer returned.')}</div>
+
+        div.innerHTML = `
+    <div class="answer-text">${md(data.answer || "No answer returned.")}</div>
+    ${srcHtml}
+    <div class="msg-meta">${routeTag}${scoreTag}${msTag}</div>`;
+        wrap.appendChild(div);
+      }
+
+      function md(text) {
+        return text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;") // escape HTML first
+          .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>") // **bold**
+          .replace(/\*(.+?)\*/g, "<em>$1</em>") // *italic*
+          .replace(/\n\n/g, "</p><p>") // paragraphs
+          .replace(/\n- /g, "</li><li>") // bullet points
+          .replace(/<\/li><li>/g, "</li><li>")
+          .replace(/^- /gm, "<li>")
+          .replace(/<li>(.*)/g, "<ul><li>$1</li></ul>")
+          .replace(/<\/ul>\s*<ul>/g, "") // merge adjacent lists
+          .replace(/\n/g, "<br>"); // remaining newlines
+      }
+
+      function esc(t) {
+        const d = document.createElement("div");
+        d.textContent = t;
+        return d.innerHTML;
+      }
+      function scrollBottom() {
+        const m = document.getElementById("messages");
+        m.scrollTop = m.scrollHeight;
+      }
+      function toast(msg, ok) {
+        const t = document.createElement("div");
+        t.className = "toast " + (ok ? "toast-ok" : "toast-err");
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 3500);
+      }
+    </script>
+  </body>
+</html>

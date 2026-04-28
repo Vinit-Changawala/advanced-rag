@@ -1,0 +1,143 @@
+# ============================================================
+# docker-compose.yml
+#
+# PURPOSE: Start ALL required services with one command.
+#
+# BEGINNER CONCEPT — What is Docker Compose?
+# Docker runs each service (app, database, etc.) in its own
+# isolated "container". Think of containers like virtual machines
+# but much lighter and faster.
+#
+# docker-compose.yml defines ALL services and how they connect.
+# One command starts everything: docker-compose up
+#
+# SERVICES IN THIS FILE:
+# 1. app        → Our FastAPI RAG application
+# 2. postgres   → Relational database (metadata, logs)
+# 3. qdrant     → Vector database (embeddings)
+# 4. redis      → Caching layer (optional, for rate limiting at scale)
+#
+# HOW TO USE:
+#   Start all services:    docker-compose up -d
+#   Stop all services:     docker-compose down
+#   View logs:             docker-compose logs -f app
+#   Restart just the app:  docker-compose restart app
+#   Fresh start:           docker-compose down -v && docker-compose up -d
+# ============================================================
+
+services:
+  # ── 1. OUR FASTAPI APPLICATION ──────────────────────────────
+  app:
+    build:
+      context: . # Build from the Dockerfile in this directory
+      dockerfile: Dockerfile
+    container_name: advanced_rag_app
+    ports:
+      - "8000:8000" # Map host port 8000 → container port 8000
+    environment:
+      # These environment variables are read by settings.yaml / .env
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - DB_PASSWORD=${DB_PASSWORD:-ragpassword}
+      - API_SECRET_KEY=${API_SECRET_KEY:-dev-secret-key-12345}
+      - DATABASE_URL=postgresql://raguser:${DB_PASSWORD:-ragpassword}@postgres:5432/ragdb
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      # Mount the source code for hot-reloading during development
+      # In production, remove this and rely on the built Docker image
+      - .:/app
+      - /app/__pycache__ # Don't sync __pycache__ (it's noisy)
+    depends_on:
+      postgres:
+        condition: service_healthy # Wait until Postgres is ready
+      qdrant:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - rag_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── 2. POSTGRESQL — Relational Database ─────────────────────
+  postgres:
+    image: postgres:16-alpine # Alpine = smaller image, less disk space
+    container_name: advanced_rag_postgres
+    environment:
+      POSTGRES_USER: raguser
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ragpassword}
+      POSTGRES_DB: ragdb
+    ports:
+      - "5432:5432" # Expose so you can connect with pgAdmin
+    volumes:
+      # Persist data even when container is stopped/removed
+      - postgres_data:/var/lib/postgresql/data
+      # Run initialization SQL on first start
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - rag_network
+    healthcheck:
+      # pg_isready checks if Postgres is accepting connections
+      test: ["CMD-SHELL", "pg_isready -U raguser -d ragdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── 3. QDRANT — Vector Database ─────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:v1.9.2
+    container_name: advanced_rag_qdrant
+    ports:
+      - "6333:6333" # REST API port
+      - "6334:6334" # gRPC port (faster for bulk operations)
+    volumes:
+      - qdrant_data:/qdrant/storage # Persist vector data
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__LOG_LEVEL=INFO
+    networks:
+      - rag_network
+    restart: unless-stopped
+
+  # ── 4. REDIS — Caching (Optional) ───────────────────────────
+  # Used for: distributed rate limiting, session caching, job queues
+  # Can be removed if you only run single-instance
+  redis:
+    image: redis:7-alpine
+    container_name: advanced_rag_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    # maxmemory-policy: when full, remove least recently used keys
+    volumes:
+      - redis_data:/data
+    networks:
+      - rag_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+# ── NAMED VOLUMES ─────────────────────────────────────────────
+# Docker manages these. Data persists even when containers are removed.
+# To delete everything: docker-compose down -v  (WARNING: deletes all data!)
+volumes:
+  postgres_data:
+    driver: local
+  qdrant_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ── NETWORK ───────────────────────────────────────────────────
+# All containers on the same network can reach each other by name.
+# e.g., from the 'app' container, "postgres" resolves to the Postgres IP.
+networks:
+  rag_network:
+    driver: bridge

@@ -1,0 +1,34 @@
+# ============================================================
+# eval_config.yaml
+# Controls how we measure if our RAG system is working well.
+# Like a report card system for our AI.
+# ============================================================
+
+evaluation:
+
+  # --- LLM Judge Settings ---
+  # We use another AI model to judge if our answers are good
+  llm_judge:
+    model: "gpt-4o"
+    scoring_rubric: |
+      Score the answer on these criteria (each out of 10):
+      1. Relevance: Does it answer the question asked?
+      2. Accuracy: Are the facts correct based on source documents?
+      3. Completeness: Is the answer thorough enough?
+      4. Clarity: Is it easy to understand?
+      Return JSON: {relevance, accuracy, completeness, clarity, overall, reasoning}
+
+  # --- Score Thresholds ---
+  thresholds:
+    min_acceptable_score: 7.0    # Answers below this trigger feedback loop
+    excellent_score: 9.0         # Answers above this are logged as examples
+    
+  # --- Retrieval Metrics ---
+  retrieval:
+    top_k: 5                     # Evaluate top 5 retrieved chunks
+    
+  # --- Feedback Loop ---
+  feedback:
+    enabled: true
+    min_samples_before_update: 10   # Collect 10 bad answers before adjusting
+    log_to_db: true

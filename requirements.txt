@@ -1,0 +1,99 @@
+# ============================================================
+# requirements.txt
+#
+# All Python packages this project depends on.
+#
+# HOW TO INSTALL:
+#   pip install -r requirements.txt
+#
+# HOW TO UPDATE:
+#   After adding a new package:
+#   pip freeze > requirements.txt
+#
+# BEGINNER CONCEPT — Why pin versions (e.g., fastapi==0.111.0)?
+# If you just write "fastapi" without a version, pip installs
+# the LATEST version. But the latest version might have breaking
+# changes that break your code!
+# Pinning versions means the same code runs on every machine.
+# ============================================================
+
+# ── Web Framework ─────────────────────────────────────────────
+fastapi==0.111.0              # The API framework
+uvicorn[standard]==0.30.1     # ASGI server to run FastAPI
+python-multipart==0.0.9       # Required for file uploads in FastAPI
+
+# ── AI / LLM ──────────────────────────────────────────────────
+mistralai>=1.0.0              # Mistral API — for chat/answers (free tier available)
+# openai>=1.30.0                # OpenAI — OPTIONAL. Only needed if you prefer GPT-4o for chat.
+                              # NOT needed for embeddings anymore.
+# anthropic>=0.28.0             # Anthropic (Claude) — optional alternative for chat
+
+# ── Embeddings (FREE — runs locally, no API key) ───────────────
+# sentence-transformers>=2.7.0  # HuggingFace BAAI/bge embeddings — free, local, no API key
+                              # Model (~130 MB) downloads automatically on first use
+# torch>=2.0.0                  # Required by sentence-transformers (CPU version is fine)
+                              # CPU install: pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# ── Vector Database ───────────────────────────────────────────
+qdrant-client==1.9.1          # Qdrant vector database client
+
+# ── Relational Database ───────────────────────────────────────
+sqlalchemy==2.0.31            # ORM and SQL toolkit
+psycopg2-binary==2.9.9        # PostgreSQL driver
+alembic==1.13.1               # Database migration tool
+
+# ── Data Validation ───────────────────────────────────────────
+pydantic>=2.7.0               # Data validation (used throughout)
+pydantic-settings>=2.3.0      # Load config from environment variables
+
+# ── Document Processing ───────────────────────────────────────
+pypdf==4.2.0                  # Read PDF files
+python-docx==1.1.2            # Read Microsoft Word (.docx) files
+
+# ── Data Processing ───────────────────────────────────────────
+pandas==2.2.2                 # Spreadsheet and CSV processing
+openpyxl==3.1.4               # Excel (.xlsx) file support (used by pandas)
+
+# ── Image Processing ──────────────────────────────────────────
+Pillow==10.3.0                # Image loading and manipulation
+pytesseract==0.3.10           # OCR — extract text from images
+                              # NOTE: also requires system package: apt install tesseract-ocr
+
+# ── Configuration ─────────────────────────────────────────────
+pyyaml==6.0.1                 # Read YAML config files (settings.yaml)
+python-dotenv==1.0.1          # Load .env files into environment variables
+
+# ── HTTP Requests ─────────────────────────────────────────────
+requests==2.32.3              # HTTP library (used in web search tool)
+httpx==0.27.0                 # Async HTTP client (used internally by FastAPI)
+
+# ── Utilities ─────────────────────────────────────────────────
+uuid==1.30                    # Generate unique IDs (UUID4)
+python-json-logger==2.0.7     # Structured JSON logging (better for production)
+tenacity==8.4.2               # Retry logic with exponential backoff
+
+# ── Testing ───────────────────────────────────────────────────
+pytest==8.2.2                 # Test runner
+pytest-asyncio==0.23.7        # Test async functions
+pytest-cov==5.0.0             # Test coverage reporting
+httpx==0.27.0                 # For testing FastAPI endpoints (TestClient)
+
+# ── Development Tools (not needed in production) ──────────────
+# Install with: pip install -r requirements-dev.txt
+# Or uncomment below:
+# black==24.4.2                # Code formatter
+# isort==5.13.2                # Sort imports automatically
+# flake8==7.0.0                # Code linter
+# pre-commit==3.7.1            # Run formatters before git commit
+
+# ── INSTALLATION NOTES ────────────────────────────────────────
+# Some packages need system-level installation too:
+#
+# Tesseract OCR (for image_loader.py):
+#   Ubuntu/Debian: sudo apt-get install tesseract-ocr
+#   macOS:         brew install tesseract
+#   Windows:       Download installer from GitHub
+#
+# PostgreSQL client library (for psycopg2):
+#   Ubuntu/Debian: sudo apt-get install libpq-dev
+#   macOS:         brew install postgresql
