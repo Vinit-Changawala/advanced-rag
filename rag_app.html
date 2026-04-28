@@ -656,7 +656,7 @@
     </div>
 
     <script>
-      const API = "http://http://34.100.248.10:8000/api/v1";
+      const API = "http://34.93.147.173/api/v1";
       let pendingFiles = [];
       let isAsking = false;
 
@@ -689,7 +689,7 @@
         const dot = document.getElementById("status-dot");
         dot.className = "status-dot";
         try {
-          const r = await fetch("http://34.100.248.10:8000/health");
+          const r = await fetch("http://34.93.147.173:8000/health");
           const data = await r.json();
           const vsOk = data.components?.vector_store === "ok";
           dot.className = vsOk ? "status-dot ok" : "status-dot err";
